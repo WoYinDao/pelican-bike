@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鹈鹕骑自行车</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#87CEEB;overflow:hidden;height:100vh;display:flex;align-items:flex-end;justify-content:center}
+.scene{position:relative;width:100%;height:100%;overflow:hidden}
+.sky{position:absolute;inset:0;background:linear-gradient(#6ec6ff 0%,#b8e4ff 55%,#e8f6ff 100%)}
+.sun{position:absolute;top:8%;right:12%;width:70px;height:70px;border-radius:50%;background:#FFE566;box-shadow:0 0 40px #FFD700;animation:pulse 3s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.cloud{position:absolute;background:#fff;border-radius:50px;opacity:.9;animation:cloudMove linear infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:#fff;border-radius:50%}
+.c1{width:90px;height:32px;top:12%;left:0;animation-duration:28s}
+.c1:before{width:45px;height:45px;top:-22px;left:12px}
+.c1:after{width:55px;height:55px;top:-28px;left:38px}
+.c2{width:70px;height:26px;top:22%;left:0;animation-duration:38s;animation-delay:-10s;opacity:.75}
+.c2:before{width:35px;height:35px;top:-18px;left:10px}
+.c2:after{width:42px;height:42px;top:-22px;left:30px}
+.c3{width:110px;height:36px;top:8%;left:0;animation-duration:48s;animation-delay:-20s;opacity:.85}
+.c3:before{width:50px;height:50px;top:-24px;left:18px}
+.c3:after{width:60px;height:60px;top:-30px;left:48px}
+@keyframes cloudMove{from{transform:translateX(110vw)}to{transform:translateX(-200px)}}
+.ground{position:absolute;bottom:0;left:0;width:200%;height:22%;background:linear-gradient(#7CB342 0%,#558B2F 100%);animation:scrollBg 4s linear infinite}
+.ground:before{content:"";position:absolute;top:-18px;left:0;width:100%;height:24px;background:repeating-linear-gradient(90deg,#66BB6A 0 40px,#81C784 40px 80px);border-radius:50% 50% 0 0 / 100% 100% 0 0}
+.road{position:absolute;bottom:0;left:0;width:200%;height:12%;background:#555;animation:scrollBg 3s linear infinite}
+.road:after{content:"";position:absolute;top:45%;left:0;width:100%;height:4px;background:repeating-linear-gradient(90deg,#FFD54F 0 40px,transparent 40px 80px)}
+@keyframes scrollBg{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.rider{position:absolute;bottom:8%;left:50%;transform:translateX(-50%);width:320px;height:280px;animation:bob 0.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-4px)}}
+svg{width:100%;height:100%;overflow:visible}
+.wheel{transform-origin:center;animation:spin 1.2s linear infinite}
+.wheel-r{animation-duration:1.2s}
+.wheel-f{animation-duration:1.2s}
+@keyframes spin{to{transform:rotate(360deg)}}
+.leg-l{transform-origin:78px 168px;animation:pedalL 1.2s linear infinite}
+.leg-r{transform-origin:78px 168px;animation:pedalR 1.2s linear infinite}
+@keyframes pedalL{0%{transform:rotate(35deg)}50%{transform:rotate(-35deg)}100%{transform:rotate(35deg)}}
+@keyframes pedalR{0%{transform:rotate(-35deg)}50%{transform:rotate(35deg)}100%{transform:rotate(-35deg)}}
+.pedal-arm{transform-origin:78px 195px;animation:crank 1.2s linear infinite}
+@keyframes crank{to{transform:rotate(360deg)}}
+.wing{transform-origin:95px 130px;animation:flap 1.5s ease-in-out infinite}
+@keyframes flap{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-12deg)}}
+.pouch{animation:pouchWobble 2s ease-in-out infinite;transform-origin:130px 145px}
+@keyframes pouchWobble{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.08)}}
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="sky"></div>
+  <div class="sun"></div>
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="cloud c3"></div>
+  <div class="ground"></div>
+  <div class="road"></div>
+  <div class="rider">
+    <svg viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg">
+      <!-- bike frame -->
+      <g id="frame" fill="none" stroke="#2C3E50" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M78 195 L130 130 L175 195"/>
+        <path d="M130 130 L175 110"/>
+        <path d="M175 110 L210 195"/>
+        <path d="M175 110 L155 95"/>
+        <path d="M78 195 L55 195"/>
+        <!-- seat post -->
+        <path d="M130 130 L125 105"/>
+        <!-- handlebar -->
+        <path d="M155 95 L145 85 M155 95 L165 88"/>
+      </g>
+      <!-- seat -->
+      <ellipse cx="122" cy="100" rx="18" ry="6" fill="#5D4037"/>
+      <!-- crank / pedal arm -->
+      <g class="pedal-arm">
+        <line x1="78" y1="195" x2="78" y2="175" stroke="#37474F" stroke-width="3" stroke-linecap="round"/>
+        <rect x="68" y="170" width="20" height="6" rx="2" fill="#78909C"/>
+      </g>
+      <!-- rear wheel -->
+      <g class="wheel wheel-r">
+        <circle cx="78" cy="195" r="38" fill="none" stroke="#212121" stroke-width="5"/>
+        <circle cx="78" cy="195" r="34" fill="none" stroke="#424242" stroke-width="2"/>
+        <g stroke="#757575" stroke-width="1.5">
+          <line x1="78" y1="195" x2="78" y2="157"/>
+          <line x1="78" y1="195" x2="78" y2="233"/>
+          <line x1="78" y1="195" x2="40" y2="195"/>
+          <line x1="78" y1="195" x2="116" y2="195"/>
+          <line x1="78" y1="195" x2="51" y2="168"/>
+          <line x1="78" y1="195" x2="105" y2="222"/>
+          <line x1="78" y1="195" x2="105" y2="168"/>
+          <line x1="78" y1="195" x2="51" y2="222"/>
+        </g>
+        <circle cx="78" cy="195" r="6" fill="#78909C"/>
+      </g>
+      <!-- front wheel -->
+      <g class="wheel wheel-f" transform="translate(132,0)">
+        <circle cx="78" cy="195" r="38" fill="none" stroke="#212121" stroke-width="5"/>
+        <circle cx="78" cy="195" r="34" fill="none" stroke="#424242" stroke-width="2"/>
+        <g stroke="#757575" stroke-width="1.5">
+          <line x1="78" y1="195" x2="78" y2="157"/>
+          <line x1="78" y1="195" x2="78" y2="233"/>
+          <line x1="78" y1="195" x2="40" y2="195"/>
+          <line x1="78" y1="195" x2="116" y2="195"/>
+          <line x1="78" y1="195" x2="51" y2="168"/>
+          <line x1="78" y1="195" x2="105" y2="222"/>
+          <line x1="78" y1="195" x2="105" y2="168"/>
+          <line x1="78" y1="195" x2="51" y2="222"/>
+        </g>
+        <circle cx="78" cy="195" r="6" fill="#78909C"/>
+      </g>
+      <!-- legs (behind body a bit) -->
+      <g class="leg-r">
+        <path d="M100 145 L95 175 L78 195" fill="none" stroke="#F5E6C8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+        <ellipse cx="74" cy="200" rx="10" ry="5" fill="#FF8A65"/>
+      </g>
+      <g class="leg-l">
+        <path d="M108 145 L115 170 L90 185" fill="none" stroke="#FFF8E7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+        <ellipse cx="88" cy="188" rx="10" ry="5" fill="#FF7043"/>
+      </g>
+      <!-- pelican body -->
+      <ellipse cx="115" cy="125" rx="32" ry="28" fill="#FFF8E1"/>
+      <!-- wing -->
+      <g class="wing">
+        <ellipse cx="100" cy="120" rx="28" ry="16" fill="#FFFDE7" stroke="#FFE082" stroke-width="1.5" transform="rotate(-20 100 120)"/>
+        <path d="M80 115 Q70 125 78 135" fill="none" stroke="#FFE082" stroke-width="1.2"/>
+        <path d="M88 112 Q78 124 86 134" fill="none" stroke="#FFE082" stroke-width="1.2"/>
+      </g>
+      <!-- pouch (big throat pouch) -->
+      <g class="pouch">
+        <ellipse cx="148" cy="148" rx="22" ry="20" fill="#FFF3E0" stroke="#FFCC80" stroke-width="1.5"/>
+        <ellipse cx="148" cy="152" rx="14" ry="10" fill="#FFE0B2" opacity=".6"/>
+      </g>
+      <!-- neck -->
+      <path d="M130 115 Q145 100 155 115" fill="none" stroke="#FFF8E1" stroke-width="14" stroke-linecap="round"/>
+      <!-- head -->
+      <ellipse cx="168" cy="108" rx="18" ry="16" fill="#FFFDE7"/>
+      <!-- beak -->
+      <path d="M180 108 L215 112 L180 118 Q185 113 180 108" fill="#FFB74D" stroke="#F57C00" stroke-width="1"/>
+      <line x1="180" y1="113" x2="210" y2="112" stroke="#E65100" stroke-width="1"/>
+      <!-- eye -->
+      <circle cx="172" cy="104" r="4.5" fill="#fff"/>
+      <circle cx="173" cy="104" r="2.5" fill="#212121"/>
+      <circle cx="174" cy="103" r="1" fill="#fff"/>
+      <!-- crest tuft -->
+      <path d="M158 95 Q155 82 162 88 Q160 78 168 85" fill="none" stroke="#FFE082" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- arm on handlebar -->
+      <path d="M125 120 Q145 105 155 95" fill="none" stroke="#FFF8E1" stroke-width="8" stroke-linecap="round"/>
+      <!-- tail feathers -->
+      <path d="M85 130 Q70 125 65 140 Q75 135 85 138" fill="#FFFDE7" stroke="#FFE082" stroke-width="1"/>
+      <path d="M88 138 Q72 140 68 152 Q80 145 90 145" fill="#FFF8E1" stroke="#FFE082" stroke-width="1"/>
+    </svg>
+  </div>
+</div>
+</body>
+</html>
