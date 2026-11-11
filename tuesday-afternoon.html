@@ -272,7 +272,7 @@ function hiss(at,dur,vol){
 var hissG=[];
 function scheduleLoop(){
   var stopAt=musicT0+STATIC-.3;
-  while(nextLoop<ac.currentTime+1.2&&nextLoop<stopAt){
+  while((offline||nextLoop<ac.currentTime+1.2)&&nextLoop<stopAt){
     var t0=nextLoop,b=0,i,j;
     for(i=0;i<MEL.length;i++){if(MEL[i][0]){tone(MEL[i][0]+(loopN%2?12:0),t0+b*BEAT,MEL[i][1]*BEAT*.92,'square',.11,stopAt);
         tone(MEL[i][0]+(loopN%2?12:0),t0+b*BEAT,MEL[i][1]*BEAT*.92,'triangle',.16,stopAt)}b+=MEL[i][1]}
@@ -283,8 +283,10 @@ function scheduleLoop(){
     nextLoop+=32*BEAT;loopN++;
   }
 }
-function startAudio(offset){
-  try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){ac=null;return}
+var offline=false;
+function startAudio(offset,octx){
+  offline=!!octx;
+  if(octx)ac=octx;else try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){ac=null;return}
   var lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3000;
   master=ac.createGain();master.gain.value=muted?0:.5;master.connect(lp);lp.connect(ac.destination);
   var lfo=ac.createOscillator();lfo.frequency.value=.7;lfoG=ac.createGain();lfoG.gain.value=9;lfo.connect(lfoG);lfo.start();
@@ -297,7 +299,7 @@ function startAudio(offset){
   nextLoop=musicT0+9;
   while(nextLoop+32*BEAT<ac.currentTime)nextLoop+=32*BEAT,loopN++;
   hiss(musicT0+STATIC-.4,END-STATIC+.4,.07);
-  timer=setInterval(scheduleLoop,250);scheduleLoop();
+  if(!offline)timer=setInterval(scheduleLoop,250);scheduleLoop();
 }
 function stopAudio(){if(timer)clearInterval(timer);timer=null;if(ac){try{ac.close()}catch(e){}}ac=null}
 
@@ -326,6 +328,13 @@ muteB.addEventListener('click',function(e){e.stopPropagation();muted=!muted;mute
   if(master)master.gain.value=muted?0:.5;hissG.forEach(function(g){g.gain.value=muted?0:g.gain.value||.06})});
 /* 封面未点开前，先在后面放一帧蓝屏 */
 blue('',0);ctx.drawImage(src,0,0);
+/* 导出视频用（见 render-video.js）：按给定时刻画一帧；离线渲染整条音轨 */
+window.__tape={END:END,
+  draw:function(t){c.globalAlpha=1;
+    if(t>=END){blue('停止 ■',END);ctx.globalAlpha=1;ctx.drawImage(src,0,0);ctx.fillStyle='rgba(0,0,0,.16)';for(var i=0;i<H;i+=3)ctx.fillRect(0,i,W,1)}
+    else if(t>=STATIC){ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);drawSnow(1)}
+    else{program(t);vhs(t)}},
+  audio:function(rate){var o=new OfflineAudioContext(1,Math.ceil(rate*END),rate);startAudio(0,o);return o.startRendering()}};
 })();
 </script>
 </body>
