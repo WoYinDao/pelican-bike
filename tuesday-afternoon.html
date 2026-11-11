@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>周二下午 · 第1盘 点歌台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:#050505;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:"SimHei","Heiti SC","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;color:#ddd}
+.tv{position:relative;width:min(100vw,133.333vh);aspect-ratio:4/3;background:#000;overflow:hidden}
+canvas{width:100%;height:100%;display:block;filter:blur(.45px) saturate(1.3) contrast(1.06)}
+.tv:after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 12vmin rgba(0,0,0,.75);border-radius:2.5%}
+.cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5%;background:#0b0b0d;cursor:pointer}
+.cover.hide{display:none}
+.label{width:72%;background:#efe9d6;color:#1b2a6b;padding:4% 5%;border-radius:3px;transform:rotate(-1.2deg);box-shadow:0 0 0 6px #17171a,0 0 0 7px #333;font-family:"KaiTi","STKaiti","Kaiti SC","BiauKai",serif;line-height:1.7}
+.label b{display:block;font-size:clamp(20px,5.2vmin,40px);border-bottom:1px solid #9aa3c7}
+.label span{display:block;font-size:clamp(13px,3vmin,22px);border-bottom:1px solid #9aa3c7}
+.btn{font:inherit;font-size:clamp(15px,3.4vmin,24px);letter-spacing:.3em;color:#eee;background:#222;border:2px solid #666;padding:.5em 1.6em;border-radius:4px;cursor:pointer}
+.btn:active{background:#444}
+.mute{position:absolute;right:2%;bottom:2%;font-size:12px;letter-spacing:0;padding:.3em .7em;opacity:.45;z-index:2}
+.again{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);display:none}
+.again.show{display:block}
+</style>
+</head>
+<body>
+<div class="tv">
+  <canvas id="c" width="640" height="480"></canvas>
+  <button class="btn mute" id="mute">声音：开</button>
+  <button class="btn again" id="again">◀◀ 倒带</button>
+  <div class="cover" id="cover">
+    <div class="label">
+      <b>点歌台　　　　第 1 盘</b>
+      <span>97.11.4 晚　有线台　翻录</span>
+      <span>周二</span>
+    </div>
+    <button class="btn">▶ 播放</button>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+var W=640,H=480,END=113,STATIC=110;
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+var src=document.createElement('canvas');src.width=W;src.height=H;var c=src.getContext('2d');
+var HEI='"SimHei","Heiti SC","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif';
+var KAI='"KaiTi","STKaiti","Kaiti SC","Noto Serif CJK SC","SimSun",serif';
+
+/* ---------- 字幕原文 ---------- */
+var STATION='岫河县有线电视台';
+var CARDS=[
+ {t:16,song:'祝你平安',from:'县纺织厂三车间全体姐妹',
+  wish:'祝刘桂兰师傅光荣退休，身体健康，万事如意，晚年幸福！',date:'一九九七年十一月四日',pal:0},
+ {t:36,song:'世上只有妈妈好',from:'城关二小四年级二班　张蕾',
+  wish:'祝亲爱的妈妈三十六岁生日快乐，永远年轻，笑口常开！',date:'一九九七年十一月四日',pal:1},
+ {t:54,song:'心太软',from:'县农机公司　赵卫东',
+  wish:'祝战友李军、孙丽华新婚之喜，白头偕老，早生贵子！',date:'一九九七年十一月四日',pal:2},
+ {t:72,song:'难忘今宵',from:'纺织厂家属院3号楼全体住户',
+  wish:'祝王建国同志出门在外一路平安，早日到家，阖家团圆！',date:'一九九七年十一月十一日',pal:3}
+];
+var CARD_END=92;
+var TICKER='★ 祝刘桂兰师傅光荣退休　★ 祝妈妈生日快乐　★ 祝李军、孙丽华新婚快乐　★ 祝王建国同志早日到家　'+
+ '★ 点歌请到县有线电视台一楼收费室办理，每首拾元，当晚播出　★ 本台每周二下午停机检修，敬请广大用户留意　';
+
+/* ---------- 小工具 ---------- */
+function clamp(x,a,b){return x<a?a:x>b?b:x}
+function ease(x){x=clamp(x,0,1);return x*x*(3-2*x)}
+function rnd(i){var x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+function txt(s,x,y,size,fill,align,font,stroke){
+  c.font='bold '+size+'px '+(font||HEI);c.textAlign=align||'left';c.textBaseline='middle';
+  c.lineJoin='round';c.lineWidth=Math.max(3,size/6);c.strokeStyle=stroke||'#000';
+  c.strokeText(s,x,y);c.fillStyle=fill;c.fillText(s,x,y);
+}
+function wrap(s,n){var out=[];for(var i=0;i<s.length;i+=n)out.push(s.substr(i,n));
+  /* 行首不放标点 */
+  for(var k=1;k<out.length;k++)if('，。！、'.indexOf(out[k][0])>=0){out[k-1]+=out[k][0];out[k]=out[k].slice(1)}
+  return out.filter(function(l){return l.length})}
+
+/* ---------- 风光片背景 ---------- */
+var PALS=[
+ {sky:['#ff9a56','#ffd9a0'],sun:'#fff3b0',sx:470,sy:150,far:'#b5607a',near:'#5a3a5e',water:['#ffb877','#7a4a6a'],fl:'#ff5fa2'},
+ {sky:['#4aa8ff','#d6f0ff'],sun:'#ffffff',sx:140,sy:90,far:'#6fae8a',near:'#2f7a4f',water:['#8fd0ff','#2a6fb0'],fl:'#ffe04a'},
+ {sky:['#ff6fa8','#ffd0e0'],sun:'#fff',sx:330,sy:120,far:'#c06aa8',near:'#7a2f6a',water:['#ffa0c8','#8a3a7a'],fl:'#ff3b3b'},
+ {sky:['#1a2a7a','#c0588a'],sun:'#ffe9a0',sx:500,sy:110,far:'#3a3a8a',near:'#1a1a4a',water:['#c0588a','#141440'],fl:'#ffb030'}
+];
+function ridge(base,amp,seed,pan,col){
+  c.beginPath();c.moveTo(0,H);
+  for(var x=0;x<=W;x+=8){var u=(x+pan)*.01+seed;
+    c.lineTo(x,base-amp*(.55*Math.sin(u)+.3*Math.sin(u*2.3+1)+.15*Math.sin(u*5.1+2)))}
+  c.lineTo(W,H);c.closePath();c.fillStyle=col;c.fill();
+}
+function scenery(p,t){
+  var g=c.createLinearGradient(0,0,0,300);g.addColorStop(0,p.sky[0]);g.addColorStop(1,p.sky[1]);
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  var rg=c.createRadialGradient(p.sx,p.sy,8,p.sx,p.sy,120);rg.addColorStop(0,p.sun);rg.addColorStop(.25,p.sun);rg.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=rg;c.fillRect(0,0,W,320);
+  ridge(250,60,p.sx*.01,t*4,p.far);ridge(290,45,p.sy*.02,t*9,p.near);
+  g=c.createLinearGradient(0,300,0,H);g.addColorStop(0,p.water[0]);g.addColorStop(1,p.water[1]);
+  c.fillStyle=g;c.fillRect(0,300,W,H-300);
+  c.fillStyle='rgba(255,255,255,.55)';
+  for(var i=0;i<46;i++){var y=306+rnd(i)*120,a=Math.sin(t*2.2+i*1.7);if(a<0)continue;
+    var x=(rnd(i+50)*W+t*6*(1+rnd(i+9)))%W;c.fillRect(x,y,(10+rnd(i+3)*36)*a,2)}
+  for(i=0;i<16;i++){var fx=((rnd(i+70)*760-t*14)%760+760)%760-60,fy=440+rnd(i+80)*46,r=13+rnd(i+90)*12,sw=Math.sin(t*1.3+i)*3;
+    c.fillStyle='#1e6a2a';c.fillRect(fx-2+sw*.3,fy,4,60);
+    c.fillStyle=p.fl;for(var k=0;k<6;k++){var an=k*1.047+i;c.beginPath();c.arc(fx+sw+Math.cos(an)*r*.6,fy+Math.sin(an)*r*.6,r*.5,0,7);c.fill()}
+    c.fillStyle='#fff6a0';c.beginPath();c.arc(fx+sw,fy,r*.32,0,7);c.fill()}
+}
+
+/* ---------- 各段画面 ---------- */
+function blue(osd,t){
+  c.fillStyle='#1222b8';c.fillRect(0,0,W,H);
+  var cnt=Math.max(0,Math.floor(t)),mm=Math.floor(cnt/60),ss=cnt%60;
+  c.font='bold 30px "Courier New",monospace';c.textBaseline='middle';c.fillStyle='#e8e8e8';
+  c.textAlign='left';c.fillText(osd,44,52);c.fillText('SP',44,H-52);
+  c.textAlign='right';c.fillText('0:'+(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss,W-44,52);
+}
+function ident(u,dur){
+  var g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#04104a');g.addColorStop(1,'#1a58c8');c.fillStyle=g;c.fillRect(0,0,W,H);
+  c.lineWidth=3;
+  for(var i=0;i<6;i++){var r=((u*60+i*70)%420);c.strokeStyle='rgba(140,210,255,'+(.5*(1-r/420))+')';c.beginPath();c.arc(W/2,190,r,0,7);c.stroke()}
+  var s=ease(u/1.2);c.save();c.translate(W/2,190);c.scale(s,s);
+  c.fillStyle='#e8322a';c.beginPath();c.arc(0,0,58,0,7);c.fill();
+  c.strokeStyle='#ffd84a';c.lineWidth=6;c.beginPath();c.arc(0,0,58,0,7);c.stroke();
+  txt('岫河',0,-12,34,'#ffd84a','center',KAI,'#7a0c08');txt('有线',0,24,26,'#fff','center',HEI,'#7a0c08');c.restore();
+  if(u>1.2){c.globalAlpha=ease((u-1.2)/.8);txt(STATION,W/2,318,46,'#fff','center',KAI,'#02082a');
+    txt('XIUHE CABLE TV',W/2,366,22,'#bfe2ff','center','"Arial",sans-serif','#02082a');c.globalAlpha=1}
+}
+function title(u,dur){
+  var g=c.createRadialGradient(W/2,220,20,W/2,220,420);g.addColorStop(0,'#ff3a2a');g.addColorStop(1,'#8a0606');c.fillStyle=g;c.fillRect(0,0,W,H);
+  c.save();c.translate(W/2,220);c.rotate(u*.25);
+  for(var i=0;i<24;i+=2){c.fillStyle='rgba(255,214,70,.22)';c.beginPath();c.moveTo(0,0);c.arc(0,0,520,i*.2618,(i+1)*.2618);c.closePath();c.fill()}
+  c.restore();
+  for(i=0;i<40;i++){var a=Math.sin(u*5+i*2.4);if(a<.2)continue;
+    c.fillStyle=['#ffe45a','#fff','#7dffb0','#7ad0ff'][i%4];var x=rnd(i)*W,y=rnd(i+33)*H,r=2+4*a;
+    c.fillRect(x-r,y-1,2*r,2);c.fillRect(x-1,y-r,2,2*r)}
+  var s=.3+.7*ease(u/1.4)+.02*Math.sin(u*6);
+  c.save();c.translate(W/2,205);c.scale(s,s);
+  txt('观众点歌台',4,5,92,'#5a0404','center',KAI,'#5a0404');
+  txt('观众点歌台',0,0,92,'#ffdf4a','center',KAI,'#7a0c08');c.restore();
+  if(u>1.6){c.globalAlpha=ease((u-1.6)/.6);
+    txt('送一首歌　道一声祝福',W/2,318,30,'#fff','center',HEI,'#5a0404');
+    txt(STATION+'　广告信息部',W/2,372,22,'#ffe9a0','center',HEI,'#5a0404');c.globalAlpha=1}
+}
+function card(k,u){
+  var d=CARDS[k];scenery(PALS[d.pal],u+k*13);
+  /* 栏目条 */
+  c.fillStyle='rgba(190,10,10,.85)';c.fillRect(0,34,250,36);
+  c.fillStyle='#ffd84a';c.fillRect(0,70,250,3);
+  txt('♪ 观众点歌台',16,53,24,'#ffe45a','left',HEI,'#5a0404');
+  if(u>.5)txt('点播歌曲《'+d.song+'》',W/2,118,36,'#ffee3a','center',KAI);
+  if(u>2){
+    c.fillStyle='rgba(8,20,110,.62)';c.fillRect(44,152,552,214);
+    c.strokeStyle='#ffd84a';c.lineWidth=2;c.strokeRect(48,156,544,206);
+    txt('点播人：'+d.from,66,186,24,'#9ff0ff','left');
+  }
+  if(u>3.5){var ls=wrap(d.wish,17),n=Math.min(ls.length,1+Math.floor((u-3.5)/1.1));
+    for(var i=0;i<n;i++)txt(ls[i],66,232+i*38,29,'#fff','left')}
+  if(u>7.4)txt(d.date,578,338,23,'#ffee3a','right');
+}
+function closing(u){
+  scenery(PALS[1],u+70);
+  c.fillStyle='rgba(8,20,110,.66)';c.fillRect(44,90,552,280);c.strokeStyle='#ffd84a';c.lineWidth=2;c.strokeRect(48,94,544,272);
+  txt('点 歌 办 法',W/2,130,36,'#ffee3a','center',KAI);
+  var ls=['地点：县有线电视台一楼收费室','时间：每日上午8:00—11:30','每首拾元　当晚19:35播出','电话：223417'];
+  for(var i=0;i<ls.length;i++)if(u>1+i*.9)txt(ls[i],78,188+i*44,27,'#fff','left');
+}
+function bye(u){
+  var g=c.createRadialGradient(W/2,220,20,W/2,220,420);g.addColorStop(0,'#ff3a2a');g.addColorStop(1,'#8a0606');c.fillStyle=g;c.fillRect(0,0,W,H);
+  txt('谢谢收看',W/2,190,84,'#ffdf4a','center',KAI,'#7a0c08');
+  txt('明晚同一时间再见',W/2,290,32,'#fff','center',HEI,'#5a0404');
+}
+function overlay(t){
+  /* 台标与时钟 */
+  txt('岫河有线',W-34,52,22,'rgba(255,255,255,.85)','right',KAI,'rgba(0,0,0,.6)');
+  var sec=19*3600+35*60+Math.floor(t-9),hh=Math.floor(sec/3600),mm=Math.floor(sec%3600/60);
+  txt(hh+':'+(mm<10?'0':'')+mm,W-34,82,20,'rgba(255,255,255,.85)','right','"Arial",sans-serif','rgba(0,0,0,.6)');
+}
+var tickW=0,tickItems=null;
+function ticker(t){
+  c.fillStyle='rgba(180,8,8,.92)';c.fillRect(0,398,W,44);c.fillStyle='#ffd84a';c.fillRect(0,396,W,2);c.fillRect(0,442,W,2);
+  var i;
+  if(!tickItems){c.font='bold 27px '+HEI;tickItems=TICKER.split('★').filter(function(s){return s.length}).map(function(s){
+      var o={s:'★'+s,x:tickW};tickW+=c.measureText(o.s).width;return o})}
+  var off=((t-16)*82)%tickW;
+  c.save();c.beginPath();c.rect(0,398,W,44);c.clip();
+  /* 逐条绘制，只画进入画面的条目 */
+  for(var k=0;k<2;k++)for(i=0;i<tickItems.length;i++){var x=W-off+tickItems[i].x+(k-1)*tickW;
+    if(x<W&&x>-900)txt(tickItems[i].s,x,421,27,'#ffee3a','left',HEI,'#5a0404')}
+  c.restore();
+}
+function wipe(u){ /* 字幕机百叶窗转场 */
+  if(u>=.6||u<0)return;var p=1-u/.6;c.fillStyle='#000';
+  for(var i=0;i<12;i++)c.fillRect(0,i*40,W,40*p);
+}
+
+function program(t){
+  if(t<3){blue('播放 ▶',t);return}
+  if(t<9){ident(t-3,6);wipe(t-3);return}
+  if(t<16){title(t-9,7);wipe(t-9);overlay(t);return}
+  if(t<CARD_END){
+    for(var k=CARDS.length-1;k>=0;k--)if(t>=CARDS[k].t){card(k,t-CARDS[k].t);wipe(t-CARDS[k].t);break}
+  }else if(t<104){closing(t-CARD_END);wipe(t-CARD_END)}
+  else if(t<STATIC){bye(t-104);wipe(t-104)}
+  if(t>=16&&t<104)ticker(t);
+  if(t<STATIC)overlay(t);
+}
+
+/* ---------- 录像带画质 ---------- */
+var noise=[],snow=document.createElement('canvas');snow.width=160;snow.height=120;var sctx=snow.getContext('2d'),sdat=sctx.createImageData(160,120);
+(function(){for(var n=0;n<3;n++){var k=document.createElement('canvas');k.width=320;k.height=240;var x=k.getContext('2d'),d=x.createImageData(320,240);
+  for(var i=0;i<d.data.length;i+=4){var v=Math.random()*255|0;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=Math.random()*70|0}
+  x.putImageData(d,0,0);noise.push(k)}})();
+function drawSnow(a){
+  var d=sdat.data;for(var i=0;i<d.length;i+=4){var v=Math.random()*255|0;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255}
+  sctx.putImageData(sdat,0,0);ctx.globalAlpha=a;ctx.imageSmoothingEnabled=false;ctx.drawImage(snow,0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.globalAlpha=1;
+}
+/* 跟踪不良的时刻：开头、两处老化、结尾 */
+function trouble(t){
+  var a=Math.max(0,1-t/2.6);
+  a=Math.max(a,Math.max(0,1-Math.abs(t-47.5)/.7)*.6,Math.max(0,1-Math.abs(t-98.2)/.5)*.5);
+  if(t>STATIC-1.2)a=Math.max(a,(t-(STATIC-1.2))/1.2);
+  return clamp(a,0,1);
+}
+function vhs(t){
+  var tr=trouble(t),i;
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  ctx.drawImage(src,Math.sin(t*1.7)*.8,0);
+  /* 色度拖影 */
+  ctx.globalAlpha=.3;ctx.drawImage(src,4,0);ctx.globalAlpha=.16;ctx.drawImage(src,-3,1);ctx.globalAlpha=1;
+  /* 行抖动 */
+  var bands=2+Math.floor(tr*14);
+  for(i=0;i<bands;i++){var y=Math.random()*H|0,h=2+Math.random()*(6+tr*40)|0,dx=(Math.random()-.5)*(4+tr*90);
+    ctx.drawImage(src,0,y,W,h,dx,y,W,h)}
+  /* 跟踪噪带 */
+  if(tr>.05){var by=((t*130)%(H+120))-60,bh=20+tr*70;
+    ctx.drawImage(src,0,by,W,bh,(Math.random()-.5)*60*tr,by,W,bh);
+    ctx.fillStyle='rgba(255,255,255,'+(.25*tr)+')';
+    for(i=0;i<40*tr;i++)ctx.fillRect(Math.random()*W,by+Math.random()*bh,20+Math.random()*120,1+Math.random()*2)}
+  /* 磁头切换噪声（画面底部） */
+  ctx.drawImage(src,0,H-12,W,12,18+Math.random()*26,H-12,W,12);
+  ctx.fillStyle='rgba(255,255,255,.5)';for(i=0;i<5;i++)ctx.fillRect(Math.random()*W,H-10+Math.random()*9,30+Math.random()*90,1.5);
+  /* 颗粒、扫描线 */
+  ctx.globalAlpha=.5;ctx.drawImage(noise[(t*24|0)%3],-Math.random()*40,-Math.random()*40,W+80,H+80);ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(0,0,0,.16)';for(i=0;i<H;i+=3)ctx.fillRect(0,i,W,1);
+  if(tr>.3)drawSnow((tr-.3)*.5);
+}
+
+/* ---------- 电子琴罐头音乐（原创旋律） ---------- */
+var ac=null,master=null,lfoG=null,muted=false,musicT0=0,nextLoop=0,loopN=0,timer=null;
+var BEAT=60/112;
+var MEL=[[64,1],[67,1],[69,1],[67,1],[72,2],[69,1],[67,1],[64,1],[67,1],[69,1],[72,1],[74,3],[0,1],
+         [76,1],[74,1],[72,1],[69,1],[67,2],[69,1],[72,1],[74,1],[72,1],[69,1],[67,1],[72,3],[0,1]];
+var CH=[[48,[60,64,67]],[45,[60,64,69]],[41,[60,65,69]],[43,[59,62,67]],[48,[60,64,67]],[45,[60,64,69]],[43,[59,62,67]],[48,[60,64,67]]];
+function hz(m){return 440*Math.pow(2,(m-69)/12)}
+function tone(m,at,dur,type,vol,stopAt){
+  if(at>=stopAt||at<ac.currentTime)return;
+  var o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=hz(m);lfoG.connect(o.detune);
+  g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(vol,at+.015);g.gain.setValueAtTime(vol,at+dur*.7);g.gain.linearRampToValueAtTime(0,at+dur);
+  o.connect(g);g.connect(master);o.start(at);o.stop(at+dur+.02);
+}
+function tick(at,stopAt){
+  if(at>=stopAt||at<ac.currentTime)return;
+  var o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.value=5200;
+  g.gain.setValueAtTime(.05,at);g.gain.exponentialRampToValueAtTime(.001,at+.04);o.connect(g);g.connect(master);o.start(at);o.stop(at+.05);
+}
+function hiss(at,dur,vol){
+  if(at+dur<ac.currentTime)return;
+  var n=ac.sampleRate*dur|0,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.random()*2-1;
+  var s=ac.createBufferSource(),g=ac.createGain();s.buffer=b;g.gain.value=vol;s.connect(g);g.connect(ac.destination);if(muted)g.gain.value=0;hissG.push(g);s.start(Math.max(at,ac.currentTime));
+}
+var hissG=[];
+function scheduleLoop(){
+  var stopAt=musicT0+STATIC-.3;
+  while(nextLoop<ac.currentTime+1.2&&nextLoop<stopAt){
+    var t0=nextLoop,b=0,i,j;
+    for(i=0;i<MEL.length;i++){if(MEL[i][0]){tone(MEL[i][0]+(loopN%2?12:0),t0+b*BEAT,MEL[i][1]*BEAT*.92,'square',.11,stopAt);
+        tone(MEL[i][0]+(loopN%2?12:0),t0+b*BEAT,MEL[i][1]*BEAT*.92,'triangle',.16,stopAt)}b+=MEL[i][1]}
+    for(i=0;i<8;i++)for(j=0;j<4;j++){var at=t0+(i*4+j)*BEAT;
+      if(j%2==0)tone(CH[i][0]-(j==2?5:0)+(j==2?12:0)-12+12,at,BEAT*.8,'triangle',.3,stopAt);
+      else CH[i][1].forEach(function(m){tone(m,at,BEAT*.35,'sawtooth',.045,stopAt)});
+      tick(at+BEAT/2,stopAt)}
+    nextLoop+=32*BEAT;loopN++;
+  }
+}
+function startAudio(offset){
+  try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){ac=null;return}
+  var lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3000;
+  master=ac.createGain();master.gain.value=muted?0:.5;master.connect(lp);lp.connect(ac.destination);
+  var lfo=ac.createOscillator();lfo.frequency.value=.7;lfoG=ac.createGain();lfoG.gain.value=9;lfo.connect(lfoG);lfo.start();
+  hissG=[];loopN=0;
+  musicT0=ac.currentTime-offset;var far=musicT0+9999;
+  hiss(musicT0,2.6,.05);
+  /* 台标音：一串上行琶音 */
+  [60,64,67,72,76].forEach(function(m,i){tone(m,musicT0+3.3+i*.22,1.6,'triangle',.2,far)});
+  tone(48,musicT0+3.3,2.4,'triangle',.25,far);
+  nextLoop=musicT0+9;
+  while(nextLoop+32*BEAT<ac.currentTime)nextLoop+=32*BEAT,loopN++;
+  hiss(musicT0+STATIC-.4,END-STATIC+.4,.07);
+  timer=setInterval(scheduleLoop,250);scheduleLoop();
+}
+function stopAudio(){if(timer)clearInterval(timer);timer=null;if(ac){try{ac.close()}catch(e){}}ac=null}
+
+/* ---------- 走带 ---------- */
+var start=0,running=false,again=document.getElementById('again'),cover=document.getElementById('cover'),muteB=document.getElementById('mute');
+function frame(now){
+  if(!running)return;
+  var t=(now-start)/1000;
+  if(t>=END){
+    blue('停止 ■',END);ctx.globalAlpha=1;ctx.drawImage(src,0,0);
+    ctx.fillStyle='rgba(0,0,0,.16)';for(var i=0;i<H;i+=3)ctx.fillRect(0,i,W,1);
+    again.classList.add('show');running=false;stopAudio();return;
+  }
+  if(t>=STATIC){ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);drawSnow(1)}
+  else{c.globalAlpha=1;program(t);vhs(t)}
+  requestAnimationFrame(frame);
+}
+function play(){
+  var m=/t=([\d.]+)/.exec(location.hash),off=m?Math.min(+m[1],END-1):0;
+  cover.classList.add('hide');again.classList.remove('show');
+  stopAudio();try{startAudio(off)}catch(e){stopAudio()}
+  start=performance.now()-off*1000;running=true;requestAnimationFrame(frame);
+}
+cover.addEventListener('click',play);again.addEventListener('click',play);
+muteB.addEventListener('click',function(e){e.stopPropagation();muted=!muted;muteB.textContent='声音：'+(muted?'关':'开');
+  if(master)master.gain.value=muted?0:.5;hissG.forEach(function(g){g.gain.value=muted?0:g.gain.value||.06})});
+/* 封面未点开前，先在后面放一帧蓝屏 */
+blue('',0);ctx.drawImage(src,0,0);
+})();
+</script>
+</body>
+</html>
